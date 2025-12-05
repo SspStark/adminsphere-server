@@ -31,3 +31,6 @@ tmp/
 # Build output
 dist/
 build/
+
+# routes
+src/routes/setupRoutes.js
