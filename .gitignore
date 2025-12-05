@@ -1,0 +1,33 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Runtime
+.pnpm-store/
+.tmp/
+temp/
+tmp/
+
+# Uploads (optional)
+# uploads/
+
+# Editor/system files
+.DS_Store
+.vscode/
+.idea/
+
+# Build output
+dist/
+build/
