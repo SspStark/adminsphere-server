@@ -6,10 +6,10 @@ export const createUser = async (req, res) => {
     try {
         const { firstName, lastName, email, username, password, role } = req.body;
 
-        const emailExists = await User.findOne({ email });
+        const emailExists = await User.findOne({ email: email.toLowerCase() });
         if (emailExists)  return res.status(400).json({ success: false, message: "Email already exists" });
 
-        const usernameExists = await User.findOne({ username });
+        const usernameExists = await User.findOne({ username: new RegExp("^" + username + "$", "i") });
         if (usernameExists) return res.status(400).json({ success: false, message: "Username already exists" });
 
         const salt = await bcrypt.genSalt(10);
