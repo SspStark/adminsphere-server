@@ -1,3 +1,5 @@
+import adminRoutes from "./adminRoutes.js";
+
 export default function registerRoutes(app){
-    // routes
+    app.use("/api/admin", adminRoutes);
 }
