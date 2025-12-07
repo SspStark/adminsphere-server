@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import connectDB from './src/config/db.js'
 import { initializeRedis } from './src/config/redisClient.js';
 import registerRoutes from './src/routes/index.js';
+import { createMailTransporter } from './src/services/mailService.js';
 
 // load env
 dotenv.config();
@@ -23,6 +24,8 @@ app.use(morgan('dev'));
 
 // all registered routes
 registerRoutes(app);
+
+createMailTransporter();
 
 app.get('/', (req, res) => res.send("AdminSphere server running..."));
 

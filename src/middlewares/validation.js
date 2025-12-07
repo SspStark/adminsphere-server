@@ -1,4 +1,4 @@
-import { body } from "express-validator";
+import { body, validationResult } from "express-validator";
 
 export const createUserValidation = [
     body("firstName").notEmpty().withMessage("First name is required"),
@@ -21,3 +21,12 @@ export const createUserValidation = [
         .notEmpty().withMessage("Role is required")
         .isIn(["admin", "employee"]).withMessage("Invalid role")
 ]
+
+export function validateResult(req, res, next) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()){
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    next();
+};
