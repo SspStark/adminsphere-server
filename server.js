@@ -1,13 +1,15 @@
 import express from 'express';
+import http from 'http'
 import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import connectDB from './src/config/db.js'
-import { initializeRedis } from './src/config/redisClient.js';
+import { initRedis } from './src/config/redisClient.js';
 import registerRoutes from './src/routes/index.js';
 import { createMailTransporter } from './src/services/mailService.js';
+import { initSocket } from './src/services/socketService.js';
 
 // load env
 dotenv.config();
@@ -15,7 +17,10 @@ dotenv.config();
 const app = express();
 
 // middlewares
-app.use(cors());
+app.use(cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true
+}));
 app.use(helmet());
 app.use(cookieParser());
 app.use(express.json());
@@ -33,14 +38,17 @@ const PORT = process.env.PORT;
 
 const initializeDBAndServer = async () => {
     try {
-        await initializeRedis();
+        await initRedis();
         await connectDB();
 
-        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+        const server = http.createServer(app);
+        initSocket(server);
+
+        server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     } catch (error) {
         console.error("Server startup error:", error);
         process.exit(1);
     }
 }
 
-initializeDBAndServer()
+initializeDBAndServer();

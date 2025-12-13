@@ -2,7 +2,7 @@ import { createClient } from "redis";
 
 let redisClient = null;
 
-export const initializeRedis = async () => {
+export const initRedis = async () => {
     try {
         redisClient = createClient({
             url: process.env.REDIS_URL

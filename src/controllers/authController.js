@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import User from "../models/user.js";
 import { getRedisClient } from "../config/redisClient.js";
 import { sendPasswordResetEmail } from "../services/mailService.js";
+import appEvents from "../services/eventEmitter.js";
 
 export const loginUser = async (req, res) => {
     try {
@@ -18,21 +19,28 @@ export const loginUser = async (req, res) => {
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ success: false, message: "Invalid password" });
-
+        
         const userId = user._id.toString();
-        const sessionId = crypto.randomUUID();
 
         const redisClient = getRedisClient();
+        const oldSession = await redisClient.get(`session:${userId}`);
+        if (oldSession){
+            appEvents.emit("SESSION_REPLACE", { userId });
+        }
+
+        const sessionId = crypto.randomUUID();
+
         await redisClient.set(`session:${userId}`, sessionId, { EX: 60 * 60 * 24 });
 
         const token = jwt.sign({ id: userId, role: user.role, sessionId }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
+        res.cookie("token", token, { httpOnly: true, secure: false, sameSite: 'lax', maxAge: 24 * 60 * 60 * 1000 });
+
         return res.status(200).json({
             success: true, 
             message: "Login successful", 
-            token,
             user: { id: userId, firstName: user.firstName, lastName: user.lastName, username: user.username, email: user.email, role: user.role } 
-        })
+        });
     } catch (error) {
         console.error("Login error", error);
         return res.status(500).json({ success: false, message: "Server error" });
@@ -41,19 +49,28 @@ export const loginUser = async (req, res) => {
 
 export const logoutUser = async (req, res) => {
     try {
-        const token = req.headers.authorization?.split(" ")[1];
-        if (!token) return res.status(200).json({ success: true, message: "User already logged out" });
+        const token = req.cookies.token;
+        if (!token){
+            res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
+            return res.status(200).json({ success: true, message: "User already logged out" });
+        } 
+        const isForceLogout = req.body?.forceLogout;
+        
+        if (!isForceLogout){
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const userId = decoded.id;
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.id;
+            const redisClient = getRedisClient();
 
-        const redisClient = getRedisClient();
+            await redisClient.del(`session:${userId}`);
+        }
 
-        await redisClient.del(`session:${userId}`);
+        res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
 
         return res.status(200).json({ success: true, message: "Logged out successfully" });
     } catch (error) {
         console.error("Logout error:", error);
+        res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
         return res.status(200).json({ success: true, message: "Logged out" });
     }
 };
@@ -61,7 +78,7 @@ export const logoutUser = async (req, res) => {
 export const getMe = async (req,res) => {
     try {
         const user = req.user;
-        return res.status(200).json({ user })
+        return res.status(200).json({ success: true, user });
     } catch (error){
         console.error("get current user:", error);
         res.status(500).json({ message: "Server error" });

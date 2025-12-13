@@ -4,7 +4,7 @@ import { getRedisClient } from "../config/redisClient.js";
 
 export const authMiddleware = async (req, res, next) => {
     try {
-        const token = req.headers.authorization?.split(" ")[1];
+        const token = req.cookies.token;
         if (!token) return res.status(401).json({ success: false, message: "No token provided" });
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -13,6 +13,7 @@ export const authMiddleware = async (req, res, next) => {
         const redisClient = getRedisClient();
         const activeSessionId = await redisClient.get(`session:${id}`);
         if (!activeSessionId || activeSessionId !== sessionId){
+            res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
             return res.status(401).json({ success: false, message: "Session expired or logged in from another device" });
         }
 
