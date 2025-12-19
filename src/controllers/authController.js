@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto"
 import jwt from 'jsonwebtoken';
-import User from "../models/user.js";
+import User from "../models/User.js";
 import { getRedisClient } from "../config/redisClient.js";
 import { sendPasswordResetEmail } from "../services/mailService.js";
 import appEvents from "../services/eventEmitter.js";

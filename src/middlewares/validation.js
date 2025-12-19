@@ -22,7 +22,7 @@ export const createUserValidation = [
         .isIn(["admin", "employee"]).withMessage("Invalid role")
 ]
 
-export function validateResult(req, res, next) {
+export const validateResult = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()){
         return res.status(400).json({ errors: errors.array() });

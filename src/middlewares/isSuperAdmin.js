@@ -1,4 +1,4 @@
-export function isSuperAdmin(req, res, next) {
+export const isSuperAdmin = (req, res, next) => {
     if (req.user.role === "super-admin"){
         return next();
     }else {

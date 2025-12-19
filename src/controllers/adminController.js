@@ -1,6 +1,7 @@
-import User from "../models/user.js";
+import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import { sendWelcomeEmail } from "../services/mailService.js";
+import { uploadImageFromBuffer, deleteImageFromCloudinary } from "../services/imageService.js";
 
 export const createUser = async (req, res) => {
     try {
@@ -138,18 +139,90 @@ export const getAllUsers = async (req, res) => {
     try {
       const users = await User.find().select("-password");
   
-      return res.status(200).json({
-        success: true,
-        count: users.length,
-        users
-      });
+      return res.status(200).json({ success: true, count: users.length, users });
   
     } catch (error) {
       console.error("Get all users error:", error);
-      return res.status(500).json({ 
-        success: false,
-        message: "Server error"
-      });
+      return res.status(500).json({ success: false, message: "Server error" });
     }
-  };
+};
+
+export const getUserById = async (req, res) => {
+    const {id} = req.params;
+    try {
+        const user = await User.findById(id).select("-password");
+    
+        return res.status(200).json({ success: true, user });
+    
+      } catch (error) {
+        console.error("Get user error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+      }
+}
+
+export const uploadUserAvatarByAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!req.file) return res.status(400).json({ success: false, message: "No image provided" });
+
+        const user = await User.findById(id);
+        if (!user){
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // Admin should not modify super-admin
+        if (user.role === "super-admin" && req.user.role !== "super-admin") {
+            return res.status(403).json({ success: false, message: "Cannot update super-admin avatar" });
+        }
+
+        // Delete old image
+        if (user.profileImage?.publicId) {
+            await deleteImageFromCloudinary(user.profileImage.publicId);
+        }
+
+        // Upload new image
+        const result = await uploadImageFromBuffer(req.file.buffer, "adminsphere/profile-images");
+
+        user.profileImage = {
+            url: result.secure_url,
+            publicId: result.public_id
+        } 
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "User avatar updated successfully",
+            imageUrl: result.secure_url
+        });
+    } catch (error) {
+        console.error("Admin avatar upload error:", error);
+        return res.status(500).json({ success: false, message: "Image upload failed" });
+    }
+}
+
+export const deleteUserAvatarByAdmin = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const user = await User.findById(id);
+        if (!user){
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        if (!user.profileImage?.publicId){
+            return res.status(400).json({ success: false, message: "No profile image to delete" });
+        }
+
+        await deleteImageFromCloudinary(user.profileImage.publicId);
+
+        user.profileImage = { url: "", publicId: "" };
+
+        await user.save();
+
+        return res.status(200).json({ success: true, message: "Profile image deleted successfully" });
+    } catch (error) {
+        console.error("Delete avatar error:", error);
+        return res.status(500).json({ success: false, message: "Failed to delete profile image" });
+    }
+}
   

@@ -1,18 +1,15 @@
+import "dotenv/config";
+
 import express from 'express';
 import http from 'http'
-import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import connectDB from './src/config/db.js'
-import { initRedis } from './src/config/redisClient.js';
+import { initRedis, getRedisClient  } from './src/config/redisClient.js';
 import registerRoutes from './src/routes/index.js';
-import { createMailTransporter } from './src/services/mailService.js';
 import { initSocket } from './src/services/socketService.js';
-
-// load env
-dotenv.config();
 
 const app = express();
 
@@ -30,8 +27,6 @@ app.use(morgan('dev'));
 // all registered routes
 registerRoutes(app);
 
-createMailTransporter();
-
 app.get('/', (req, res) => res.send("AdminSphere server running..."));
 
 const PORT = process.env.PORT;
@@ -45,6 +40,22 @@ const initializeDBAndServer = async () => {
         initSocket(server);
 
         server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+        // graceful shutdown (nodemon / ctrl+c)
+        const shutdown = async () => {
+          console.log("Shutting down server...");
+          try {
+            const redisClient = getRedisClient();
+            await redisClient.quit();
+            console.log("Redis connection closed");
+          } catch (err) {
+            console.error("Error closing Redis:", err.message);
+          }
+          process.exit(0);
+        };
+
+        process.on("SIGINT", shutdown);
+        process.on("SIGTERM", shutdown);
     } catch (error) {
         console.error("Server startup error:", error);
         process.exit(1);
