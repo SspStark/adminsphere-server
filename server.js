@@ -13,6 +13,8 @@ import { initSocket } from './src/services/socketService.js';
 
 const app = express();
 
+//app.set("trust proxy", 1);
+
 // middlewares
 app.use(cors({
     origin: process.env.CLIENT_URL,
