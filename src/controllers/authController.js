@@ -1,6 +1,9 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto"
 import jwt from 'jsonwebtoken';
+import axios from "axios";
+import { OAuth2Client } from "google-auth-library";
+
 import User from "../models/User.js";
 import { getRedisClient } from "../config/redisClient.js";
 import { sendPasswordResetEmail } from "../services/mailService.js";
@@ -16,6 +19,11 @@ export const loginUser = async (req, res) => {
         const user = await User.findOne(
             isEmail ? { email: identifier.toLowerCase() } : { username: new RegExp("^" + identifier + "$", "i") });
         if (!user) return res.status(400).json({ success: false, message: "Invalid username/email" });
+        
+        // BLOCK password login for Google users
+        if (user.authProvider !== "local") {
+            return res.status(403).json({ success: false, message: "Please login using Google" });
+        }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ success: false, message: "Invalid password" });
@@ -90,8 +98,12 @@ export const forgotPassword = async (req, res) => {
         const { email } = req.body;
 
         const user = await User.findOne({ email: email.toLowerCase() });
-        if (!user){
+        if (!user) {
             return res.status(200).json({ success: false, message: "If this email exists, a reset link has been sent." });
+        }
+
+        if (user.authProvider !== "local") {
+            return res.status(400).json({ success: false, message: "Password reset not available for Google login users" });
         }
 
         const userId = user._id.toString();
@@ -146,3 +158,81 @@ export const resetPassword = async (req, res) => {
         return res.status(400).json({ success: false, message: "Invalid or expired reset token" });
     }
 };
+
+const googleClient = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID
+);
+
+export const googleAuth = (req, res) => {
+    const redirectUrl =
+      "https://accounts.google.com/o/oauth2/v2/auth" +
+      `?client_id=${process.env.GOOGLE_CLIENT_ID}` +
+      `&redirect_uri=${encodeURIComponent(process.env.GOOGLE_REDIRECT_URI)}` +
+      "&response_type=code" +
+      "&scope=profile email";
+  
+    res.redirect(redirectUrl);
+}
+
+export const googleOAuthLogin = async (req, res) => {
+    try {
+        const { code } = req.query;
+
+        // Exchange code for tokens
+        const tokenRes = await axios.post("https://oauth2.googleapis.com/token", 
+            {
+                client_id: process.env.GOOGLE_CLIENT_ID,
+                client_secret: process.env.GOOGLE_CLIENT_SECRET,
+                code,
+                redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+                grant_type: "authorization_code"
+            }
+        )
+
+        const { id_token } = tokenRes.data;
+
+        // Verify Google identity
+        const ticket = await googleClient.verifyIdToken({
+            idToken: id_token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        const { sub, email, given_name, family_name, email_verified } = payload;
+
+        if (!email_verified) {
+            return res.redirect(`${process.env.CLIENT_URL}/login?error=email_not_verified`);
+        }
+
+        // Find or Create User
+        let user = await User.findOne({ $or: [{ googleId: sub }, { email }] });
+        if (!user) {
+            user = await User.create({
+                firstName: given_name || email.split("@")[0],
+                lastName: family_name || "",
+                email,
+                username: email.split("@")[0],
+                authProvider: "google",
+                googleId: sub
+            });
+        }
+
+        const userId = user._id.toString();
+
+        const redisClient = getRedisClient();
+        const oldSession = await redisClient.get(`session:${userId}`);
+        if (oldSession) {
+          appEvents.emit("SESSION_REPLACE", { userId });
+        }       
+        const sessionId = crypto.randomUUID();      
+        await redisClient.set(`session:${userId}`, sessionId, { EX: 86400 });
+
+        const token = jwt.sign({ id: userId, role: user.role, sessionId }, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+        res.cookie("token", token, { httpOnly: true, sameSite: "lax", secure: false, maxAge: 86400000 });
+
+        res.redirect(`${process.env.CLIENT_URL}/home`);
+    } catch (error) {
+        console.error("Google OAuth error", error);
+        res.redirect(`${process.env.CLIENT_URL}/login?error=oauth`);
+    }
+}
