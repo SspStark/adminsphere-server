@@ -21,8 +21,8 @@ export const loginUser = async (req, res) => {
         if (!user) return res.status(400).json({ success: false, message: "Invalid username/email" });
         
         // BLOCK password login for Google users
-        if (user.authProvider !== "local") {
-            return res.status(403).json({ success: false, message: "Please login using Google" });
+        if (!user.authProvider.includes("local")) {
+            return res.status(403).json({ success: false, message: "Please login with your existing Google account and create a password" });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
@@ -102,7 +102,7 @@ export const forgotPassword = async (req, res) => {
             return res.status(200).json({ success: false, message: "If this email exists, a reset link has been sent." });
         }
 
-        if (user.authProvider !== "local") {
+        if (!user.authProvider.includes("local")) {
             return res.status(400).json({ success: false, message: "Password reset not available for Google login users" });
         }
 
@@ -203,22 +203,42 @@ export const googleOAuthLogin = async (req, res) => {
             return res.redirect(`${process.env.CLIENT_URL}/login?error=email_not_verified`);
         }
 
-        // Find or Create User
-        let user = await User.findOne({ $or: [{ googleId: sub }, { email }] });
+        let user = await User.findOne({ googleId: sub });
+
+        // Check for local user exists
+        if (!user) {
+            user = await User.findOne({ email });
+
+            // Local user exists → LINK GOOGLE
+            if (user && !user.authProvider.includes("google")){
+                user.googleId = sub;
+                user.authProvider.push("google");
+
+                if (!user.profileImage?.url && payload.picture){
+                    user.profileImage.url = payload.picture;
+                }
+
+                await user.save();
+            }
+
+
+        }
+
+        // New Google user
         if (!user) {
             user = await User.create({
                 firstName: given_name || email.split("@")[0],
                 lastName: family_name || "",
                 email,
                 username: email.split("@")[0],
-                authProvider: "google",
+                authProvider: ["google"],
                 googleId: sub
             });
         }
 
         const userId = user._id.toString();
-
         const redisClient = getRedisClient();
+
         const oldSession = await redisClient.get(`session:${userId}`);
         if (oldSession) {
           appEvents.emit("SESSION_REPLACE", { userId });
