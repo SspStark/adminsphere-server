@@ -55,18 +55,13 @@ export const loginUser = async (req, res) => {
         const redisClient = getRedisClient();
 
         if (redisClient){
-            try {
-                const oldSession = await redisClient.get(`session:${userId}`);
-                if (oldSession){
-                    appEvents.emit("SESSION_REPLACE", { userId });
-                }
-
-                const sessionId = crypto.randomUUID();
-
-                await redisClient.set(`session:${userId}`, sessionId, { EX: 60 * 60 * 24 });
-            } catch (err) {
-                console.warn("Redis unavailable during login:", err.message);
+            const oldSession = await redisClient.get(`session:${userId}`);
+            if (oldSession){
+                appEvents.emit("SESSION_REPLACE", { userId });
             }
+
+            const sessionId = crypto.randomUUID();
+            await redisClient.set(`session:${userId}`, sessionId, { EX: 60 * 60 * 24 });
         } else {
             console.warn("Redis skipped: session enforcement disabled");
         }
@@ -259,8 +254,6 @@ export const googleOAuthLogin = async (req, res) => {
 
                 await user.save();
             }
-
-
         }
 
         // New Google user
@@ -278,12 +271,17 @@ export const googleOAuthLogin = async (req, res) => {
         const userId = user._id.toString();
         const redisClient = getRedisClient();
 
-        const oldSession = await redisClient.get(`session:${userId}`);
-        if (oldSession) {
-          appEvents.emit("SESSION_REPLACE", { userId });
-        }       
-        const sessionId = crypto.randomUUID();      
-        await redisClient.set(`session:${userId}`, sessionId, { EX: 86400 });
+        if (redisClient){
+            const oldSession = await redisClient.get(`session:${userId}`);
+            if (oldSession) {
+                appEvents.emit("SESSION_REPLACE", { userId });
+            }
+                   
+            const sessionId = crypto.randomUUID();      
+            await redisClient.set(`session:${userId}`, sessionId, { EX: 86400 });
+        } else {
+            console.warn("Redis skipped: session enforcement disabled");
+        }
 
         await logAuthEvent({ userId: user._id, action: "GOOGLE_LOGIN", provider: "google", req });
 
