@@ -125,8 +125,13 @@ export const deleteUserByAdmin = async (req, res) => {
 
         // Clean Redis sessions
         const redisClient = getRedisClient();
-        await redisClient.del(`session:${id}`);
-        await redisClient.del(`password_reset:${id}`);
+        
+        if (redisClient) {
+            await redisClient.del(`session:${id}`);
+            await redisClient.del(`password_reset:${id}`);
+        } else {
+            console.warn("Redis skipped: session enforcement disabled");
+        }
 
         return res.status(200).json({ success: true, message: "User deleted successfully" });
     } catch (error) {

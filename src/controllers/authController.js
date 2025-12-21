@@ -39,14 +39,23 @@ export const loginUser = async (req, res) => {
         const userId = user._id.toString();
 
         const redisClient = getRedisClient();
-        const oldSession = await redisClient.get(`session:${userId}`);
-        if (oldSession){
-            appEvents.emit("SESSION_REPLACE", { userId });
+        
+        if (redisClient){
+            try {
+                const oldSession = await redisClient.get(`session:${userId}`);
+                if (oldSession){
+                    appEvents.emit("SESSION_REPLACE", { userId });
+                }
+
+                const sessionId = crypto.randomUUID();
+
+                await redisClient.set(`session:${userId}`, sessionId, { EX: 60 * 60 * 24 });
+            } catch (err) {
+                console.warn("Redis unavailable during login:", err.message);
+            }
+        } else {
+            console.warn("Redis skipped: session enforcement disabled");
         }
-
-        const sessionId = crypto.randomUUID();
-
-        await redisClient.set(`session:${userId}`, sessionId, { EX: 60 * 60 * 24 });
 
         await logAuthEvent({ userId: user._id, action: "LOGIN_SUCCESS", provider: "local", req });
 

@@ -11,10 +11,15 @@ export const authMiddleware = async (req, res, next) => {
         const { id, role, sessionId } = decoded;
 
         const redisClient = getRedisClient();
-        const activeSessionId = await redisClient.get(`session:${id}`);
-        if (!activeSessionId || activeSessionId !== sessionId){
-            res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
-            return res.status(401).json({ success: false, message: "Session expired or logged in from another device" });
+
+        if (redisClient) {
+            const activeSessionId = await redisClient.get(`session:${id}`);
+            if (!activeSessionId || activeSessionId !== sessionId){
+                res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
+                return res.status(401).json({ success: false, message: "Session expired or logged in from another device" });
+            }
+        } else {
+            console.warn("Redis skipped: session enforcement disabled");
         }
 
         const user = await User.findById(id).select("-password");

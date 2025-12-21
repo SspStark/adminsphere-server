@@ -1,14 +1,29 @@
 import { createClient } from "redis";
 
 let redisClient = null;
+let redisReady = false;
 
 export const initRedis = async () => {
     try {
         redisClient = createClient({
-            url: process.env.REDIS_URL
+            url: process.env.REDIS_URL,
+            socket: {
+                connectTimeout: 10000
+            }
         });
 
+        redisClient.on("ready", () => {
+            redisReady = true;
+            console.log("Redis Ready");
+        });
+
+        redisClient.on("end", () => {
+            redisReady = false;
+            console.warn("Redis disconnected")
+        })
+
         redisClient.on("error", (err) => {
+            redisReady = false;
             console.error("Redis Client Error:", err);
         });
 
@@ -16,13 +31,12 @@ export const initRedis = async () => {
         console.log("Redis Connected (Upstash)");
     } catch (error) {
         console.error("Redis connection failed:", error);
-        throw error;
     }
 };
 
 export const getRedisClient = () => {
-    if (!redisClient) {
-        throw new Error("Redis client not initialized. Call initRedis() first.");
+    if (!redisReady) {
+        return null;
     }
     return redisClient;
 };
