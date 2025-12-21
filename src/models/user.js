@@ -20,7 +20,9 @@ const userSchema = new mongoose.Schema({
         publicId: { type: String, default: "" }
     },
     authProvider: { type: [String], enum: ["local", "google"], default: ["local"] },
-    googleId: { type: String, unique: true, sparse: true, default: null }
+    googleId: { type: String, unique: true, sparse: true, default: null },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date, default: null }
 });
 
 const User = mongoose.model("User", userSchema);

@@ -9,6 +9,7 @@ import { getRedisClient } from "../config/redisClient.js";
 import { sendPasswordResetEmail } from "../services/mailService.js";
 import appEvents from "../services/eventEmitter.js";
 import { logAuthEvent } from "../services/authLogService.js";
+import { isAccountLocked, recordFailedLogin, resetLoginAttempts } from "../utils/accountLock.js";
 
 export const loginUser = async (req, res) => {
     try {
@@ -30,16 +31,29 @@ export const loginUser = async (req, res) => {
             return res.status(403).json({ success: false, message: "Please login with your existing Google account and create a password" });
         }
 
+        if (isAccountLocked(user)) {
+            return res.status(423).json({ success: false, message: "Account temporarily locked. Try again later." });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
+            await recordFailedLogin(user);
             await logAuthEvent({ userId: user._id, action: "LOGIN_FAILED", provider: "local", req });
+
+            // If just locked
+            if (isAccountLocked(user)) {
+                return res.status(423).json({ success: false, message: "Too many failed attempts. Account locked for 15 minutes." });
+            }
+
             return res.status(400).json({ success: false, message: "Invalid password" });
-        } 
+        }
+        
+        // Password correct → reset attempts
+        await resetLoginAttempts(user);
         
         const userId = user._id.toString();
-
         const redisClient = getRedisClient();
-        
+
         if (redisClient){
             try {
                 const oldSession = await redisClient.get(`session:${userId}`);
@@ -84,12 +98,16 @@ export const logoutUser = async (req, res) => {
         const isForceLogout = req.body?.forceLogout;
         
         if (!isForceLogout){
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            const userId = decoded.id;
-
             const redisClient = getRedisClient();
 
-            await redisClient.del(`session:${userId}`);
+            if (redisClient){
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                const userId = decoded.id;
+
+                await redisClient.del(`session:${userId}`);
+            } else {
+                console.warn("Redis skipped: session enforcement disabled");
+            }
         }
 
         await logAuthEvent({ userId: req.user?.id, action: "LOGOUT", provider: "local", req });
