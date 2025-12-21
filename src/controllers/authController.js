@@ -8,6 +8,7 @@ import User from "../models/User.js";
 import { getRedisClient } from "../config/redisClient.js";
 import { sendPasswordResetEmail } from "../services/mailService.js";
 import appEvents from "../services/eventEmitter.js";
+import { logAuthEvent } from "../services/authLogService.js";
 
 export const loginUser = async (req, res) => {
     try {
@@ -18,15 +19,22 @@ export const loginUser = async (req, res) => {
 
         const user = await User.findOne(
             isEmail ? { email: identifier.toLowerCase() } : { username: new RegExp("^" + identifier + "$", "i") });
-        if (!user) return res.status(400).json({ success: false, message: "Invalid username/email" });
+        if (!user) {
+            await logAuthEvent({ action:"LOGIN_FAILED", provider:"local", req });
+            return res.status(400).json({ success: false, message: "Invalid username/email" });
+        }
         
         // BLOCK password login for Google users
         if (!user.authProvider.includes("local")) {
+            await logAuthEvent({ action:"LOGIN_FAILED", provider:"local", req });
             return res.status(403).json({ success: false, message: "Please login with your existing Google account and create a password" });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ success: false, message: "Invalid password" });
+        if (!isMatch) {
+            await logAuthEvent({ userId: user._id, action: "LOGIN_FAILED", provider: "local", req });
+            return res.status(400).json({ success: false, message: "Invalid password" });
+        } 
         
         const userId = user._id.toString();
 
@@ -39,6 +47,8 @@ export const loginUser = async (req, res) => {
         const sessionId = crypto.randomUUID();
 
         await redisClient.set(`session:${userId}`, sessionId, { EX: 60 * 60 * 24 });
+
+        await logAuthEvent({ userId: user._id, action: "LOGIN_SUCCESS", provider: "local", req });
 
         const token = jwt.sign({ id: userId, role: user.role, sessionId }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
@@ -72,6 +82,8 @@ export const logoutUser = async (req, res) => {
 
             await redisClient.del(`session:${userId}`);
         }
+
+        await logAuthEvent({ userId: req.user?.id, action: "LOGOUT", provider: "local", req });
 
         res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
 
@@ -245,6 +257,8 @@ export const googleOAuthLogin = async (req, res) => {
         }       
         const sessionId = crypto.randomUUID();      
         await redisClient.set(`session:${userId}`, sessionId, { EX: 86400 });
+
+        await logAuthEvent({ userId: user._id, action: "GOOGLE_LOGIN", provider: "google", req });
 
         const token = jwt.sign({ id: userId, role: user.role, sessionId }, process.env.JWT_SECRET, { expiresIn: "1d" });
 

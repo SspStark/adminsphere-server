@@ -1,4 +1,4 @@
-import { getRedisClient } from "../config/redisClient";
+import { getRedisClient } from "../config/redisClient.js";
 
 export const rateLimiter = ({ keyPrefix, limit, windowSeconds }) => {
     return async (req, res, next) => {

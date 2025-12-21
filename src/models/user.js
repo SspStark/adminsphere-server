@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
         minlength: 6, 
         trim: true,
         required: function () {
-            return this.authProvider === 'local'
+            return this.authProvider.includes("local");
         }
      },
     role: { type: String, enum: ["super-admin", "admin", "employee"], default: "employee" },
@@ -19,8 +19,8 @@ const userSchema = new mongoose.Schema({
         url: { type: String, default: ''},
         publicId: { type: String, default: "" }
     },
-    authProvider: { type: String, enum: ["local", "google"], default: "local" },
-    googleId: { type: String, unique: true, sparse: true }
+    authProvider: { type: [String], enum: ["local", "google"], default: ["local"] },
+    googleId: { type: String, unique: true, sparse: true, default: null }
 });
 
 const User = mongoose.model("User", userSchema);
