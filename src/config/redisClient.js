@@ -30,7 +30,7 @@ export const initRedis = async () => {
         await redisClient.connect();
         console.log("Redis Connected (Upstash)");
     } catch (error) {
-        console.error("Redis connection failed:", error);
+        console.error("Redis connection failed (non-fatal):", error);
     }
 };
 

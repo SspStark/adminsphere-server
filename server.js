@@ -37,22 +37,22 @@ const initializeDBAndServer = async () => {
     try {
         await connectDB();
 
+        await initRedis();
+
         const server = http.createServer(app);
         initSocket(server);
 
         server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-        initRedis().catch(err => {
-          console.error("Redis init failed (non-fatal):", err.message);
-        });
 
         // graceful shutdown (nodemon / ctrl+c)
         const shutdown = async () => {
           console.log("Shutting down server...");
           try {
             const redisClient = getRedisClient();
-            await redisClient.quit();
-            console.log("Redis connection closed");
+            if (redisClient) {
+              await redisClient.quit();
+              console.log("Redis connection closed");
+            }
           } catch (err) {
             console.error("Error closing Redis:", err.message);
           }
