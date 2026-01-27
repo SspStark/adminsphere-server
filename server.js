@@ -10,6 +10,7 @@ import connectDB from './src/config/db.js'
 import { initRedis, getRedisClient  } from './src/config/redisClient.js';
 import registerRoutes from './src/routes/index.js';
 import { initSocket } from './src/services/socketService.js';
+import { startCronSystem } from "./src/cron/index.js";
 
 const app = express();
 
@@ -43,6 +44,8 @@ const initializeDBAndServer = async () => {
         initSocket(server);
 
         server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+        startCronSystem();
 
         // graceful shutdown (nodemon / ctrl+c)
         const shutdown = async () => {

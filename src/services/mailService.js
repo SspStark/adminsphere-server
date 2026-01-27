@@ -67,3 +67,17 @@ export const sendPasswordResetEmail = async (email, token) => {
         return false;
     }
 };
+
+export const sendEmailWithAttachment = async ({ to, subject, html, attachments }) => {
+    try {
+        await transporter.sendMail({
+            from: `AdminSphere <${process.env.APP_EMAIL}>`,
+            to,
+            subject,
+            html,
+            attachments
+        });
+    } catch (error) {
+        console.error("Failed to send users report:", error);
+    }
+}
