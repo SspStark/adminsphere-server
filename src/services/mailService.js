@@ -44,7 +44,7 @@ export const sendWelcomeEmail = async ({ firstName, lastName, email, username, p
 
 export const sendPasswordResetEmail = async (email, token) => {
     try {
-        const resetLink = `http://localhost:5173/reset-password/${token}`;
+        const resetLink = `${process.env.CLIENT_URL}/reset-password/${token}`;
 
         const mailOptions = {
             from: `AdminSphere <${process.env.APP_EMAIL}>`,
@@ -60,11 +60,8 @@ export const sendPasswordResetEmail = async (email, token) => {
         };
 
         await transporter.sendMail(mailOptions);
-        return true;
-
     } catch (err) {
         console.error("Failed to send password reset email:", err);
-        return false;
     }
 };
 

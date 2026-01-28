@@ -97,21 +97,21 @@ export const logoutUser = async (req, res) => {
             return res.status(200).json({ success: true, message: "User already logged out" });
         } 
         const isForceLogout = req.body?.forceLogout;
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.id;
         
         if (!isForceLogout){
             const redisClient = getRedisClient();
 
             if (redisClient){
-                const decoded = jwt.verify(token, process.env.JWT_SECRET);
-                const userId = decoded.id;
-
                 await redisClient.del(`session:${userId}`);
             } else {
                 console.warn("Redis skipped: session enforcement disabled");
             }
         }
 
-        await logAuthEvent({ userId: req.user?.id, action: "LOGOUT", provider: "local", req });
+        await logAuthEvent({ userId, action: "LOGOUT", provider: "local", req });
 
         res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
 
@@ -146,18 +146,22 @@ export const forgotPassword = async (req, res) => {
             return res.status(400).json({ success: false, message: "Password reset not available for Google login users" });
         }
 
-        const userId = user._id.toString();
-        const resetToken = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "10m" });
-
         const redisClient = getRedisClient();
-        await redisClient.set(`password_reset:${user._id}`, resetToken, { EX: 60 * 10 });
+        if (!redisClient) {
+            console.error("Redis unavailable during forgot password");
+            return res.status(503).json({ success: false, message: "Password reset temporarily unavailable. Please try later." });
+        }
 
-        const emailSent = await sendPasswordResetEmail(user.email, resetToken);
+        const resetToken = jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: "10m" });
+
+        await redisClient.set(`password_reset:${user._id}`, "1", { EX: 600 });
+
+        await sendPasswordResetEmail(user.email, resetToken);
 
         return res.status(200).json({ success: true, message: "Password reset link sent to email." });
     } catch (error) {
         console.error("Forgot password error:", error);
-        return res.status(500).json({ success: false, message: "Server error" });
+        return res.status(500).json({ success: false, message: "Password reset temporarily unavailable." });
     }
 }
 
@@ -169,11 +173,15 @@ export const resetPassword = async (req, res) => {
         const userId = decoded.id;
 
         const redisClient = getRedisClient();
+        if (!redisClient) {
+            console.error("Redis unavailable during reset password");
+            return res.status(503).json({ success: false, message: "Password reset temporarily unavailable. Please try later." });
+        }
 
-        // Check Redis for valid token
-        const storedToken = await redisClient.get(`password_reset:${userId}`);
-        if (!storedToken || storedToken !== token) {
-            return res.status(400).json({ success: false, message: "reset token" });
+        const resetAllowed = await redisClient.get(`password_reset:${userId}`);
+
+        if (!resetAllowed) {
+            return res.status(400).json({ success: false, message: "Invalid or expired reset token" });
         }
 
         const user = await User.findById(userId);
@@ -191,7 +199,9 @@ export const resetPassword = async (req, res) => {
         // Force logout — delete session
         await redisClient.del(`session:${userId}`);
 
-        return res.json({ success: true, message: "Password reset successful." });
+        await logAuthEvent({ userId: user._id, action: "PASSWORD_RESET", provider: "local", req });
+
+        return res.json({ success: true, message: "Password reset successful. Please log in again." });
 
     } catch (error) {
         console.error("Reset password error:", error);
