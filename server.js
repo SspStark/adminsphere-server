@@ -11,6 +11,7 @@ import { initRedis, getRedisClient  } from './src/config/redisClient.js';
 import registerRoutes from './src/routes/index.js';
 import { initSocket } from './src/services/socketService.js';
 import { startCronSystem } from "./src/cron/index.js";
+import { errorHandler } from "./src/middlewares/errorHandler.js";
 
 const app = express();
 
@@ -31,6 +32,8 @@ app.use(morgan('dev'));
 registerRoutes(app);
 
 app.get('/', (req, res) => res.send("AdminSphere server running..."));
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT;
 
