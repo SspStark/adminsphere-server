@@ -4,7 +4,7 @@ import { sessionCleanupJob } from './jobs/sessionCleanup.job.js';
 import { runDailyUsersReportJob } from './jobs/dailyUsersReport.job.js';
 
 export const registerCronSchedules = () => {
-    logger.log("⏱️ Registering cron schedules...");
+    logger.info("⏱️ Registering cron schedules...");
 
     // Daily at 3 AM
     cron.schedule("0 3 * * *", async () => {

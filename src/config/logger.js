@@ -5,7 +5,7 @@ const { combine, timestamp, printf, colorize } = winston.format;
 
 // Log format
 const logFormat = printf(({ level, message, timestamp }) => {
-    return `${timestamp} [${level}]: ${message}`;
+    return process.env.NODE_ENV === "production" ? `${timestamp} [${level}]: ${message}` : `[${level}]: ${message}`;
 });
 
 // Fil transport (rotating)
