@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import logger from "../config/logger.js";
 
 export const createSuperAdmin = async (req, res) => {
     try {
@@ -14,7 +15,7 @@ export const createSuperAdmin = async (req, res) => {
         const user = await User.create({ firstName, lastName, email, username, password: hashedPassword, role: "super-admin" });
         res.status(200).json({ success: true, message: "Super admin created successfully" });
     } catch (error) {
-        console.error("Super admin error:", error);
+        logger.error("Super admin error:", error);
         res.status(500).json({ success: false, message: "Server error" });
     }
 }

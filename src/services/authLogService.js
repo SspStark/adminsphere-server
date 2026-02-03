@@ -1,4 +1,5 @@
 import AuthLog from "../models/AuthLog.js";
+import logger from "../config/logger.js";
 
 export const logAuthEvent = async ({ userId = null, action, provider, req }) => {
     try {
@@ -11,6 +12,6 @@ export const logAuthEvent = async ({ userId = null, action, provider, req }) => 
         });
     } catch (error) {
         // Logging must NEVER break auth
-        console.error("Auth log failed:", error);
+        logger.error("Auth log failed:", error);
     }
 };

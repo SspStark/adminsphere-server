@@ -12,10 +12,14 @@ import registerRoutes from './src/routes/index.js';
 import { initSocket } from './src/services/socketService.js';
 import { startCronSystem } from "./src/cron/index.js";
 import { errorHandler } from "./src/middlewares/errorHandler.js";
+import logger from "./src/config/logger.js";
 
 const app = express();
 
-//app.set("trust proxy", 1);
+// trust proxy (prod)
+if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+}
 
 // middlewares
 app.use(cors({
@@ -46,21 +50,21 @@ const initializeDBAndServer = async () => {
         const server = http.createServer(app);
         initSocket(server);
 
-        server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+        server.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
 
         startCronSystem();
 
         // graceful shutdown (nodemon / ctrl+c)
         const shutdown = async () => {
-          console.log("Shutting down server...");
+          logger.info("Shutting down server...");
           try {
             const redisClient = getRedisClient();
             if (redisClient) {
               await redisClient.quit();
-              console.log("Redis connection closed");
+              logger.info("Redis connection closed");
             }
-          } catch (err) {
-            console.error("Error closing Redis:", err.message);
+          } catch (error) {
+            logger.error("Error closing Redis:", error.message);
           }
           process.exit(0);
         };
@@ -68,7 +72,7 @@ const initializeDBAndServer = async () => {
         process.on("SIGINT", shutdown);
         process.on("SIGTERM", shutdown);
     } catch (error) {
-        console.error("Server startup error:", error);
+        logger.error("Server startup error:", error);
         process.exit(1);
     }
 }

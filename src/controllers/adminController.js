@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import logger from "../config/logger.js";
 import { sendWelcomeEmail } from "../services/mailService.js";
 import { uploadImageFromBuffer, deleteImageFromCloudinary } from "../services/imageService.js";
 
@@ -27,7 +28,7 @@ export const createUser = async (req, res) => {
             message: emailSent ? "User created successfully and email sent" : "User created successfully but welcome email failed", 
             user: { username, email, role } });
     } catch (error) {
-        console.error("Create user error", error);
+        logger.error("Create user error", error);
         res.status(500).json({ success: false, message: "Server error" });
     }
 }
@@ -73,7 +74,7 @@ export const updateUserByAdmin = async (req, res) => {
 
         return res.status(200).json({ success: true, message: "User updated successfully" });
     } catch (error) {
-        console.error("Admin update user error:", error);
+        logger.error("Admin update user error:", error);
         res.status(500).json({ success: false, message: "Server error" });
     }
 };
@@ -102,7 +103,7 @@ export const resetUserPasswordByAdmin = async (req, res) => {
 
         return res.status(200).json({ success: true, message: "Password reset successfully" });
     } catch (error) {
-        console.error("Admin reset password error:", error);
+        logger.error("Admin reset password error:", error);
         return res.status(500).json({ success: false, message: "Server error" });
     }
 };
@@ -130,12 +131,12 @@ export const deleteUserByAdmin = async (req, res) => {
             await redisClient.del(`session:${id}`);
             await redisClient.del(`password_reset:${id}`);
         } else {
-            console.warn("Redis skipped: session enforcement disabled");
+            logger.warn("Redis skipped: session enforcement disabled");
         }
 
         return res.status(200).json({ success: true, message: "User deleted successfully" });
     } catch (error) {
-        console.error("Delete user error:", error);
+        logger.error("Delete user error:", error);
         return res.status(500).json({ success: false, message: "Server error" });
     }
 }
@@ -147,7 +148,7 @@ export const getAllUsers = async (req, res) => {
       return res.status(200).json({ success: true, count: users.length, users });
   
     } catch (error) {
-      console.error("Get all users error:", error);
+      logger.error("Get all users error:", error);
       return res.status(500).json({ success: false, message: "Server error" });
     }
 };
@@ -160,7 +161,7 @@ export const getUserById = async (req, res) => {
         return res.status(200).json({ success: true, user });
     
       } catch (error) {
-        console.error("Get user error:", error);
+        logger.error("Get user error:", error);
         return res.status(500).json({ success: false, message: "Server error" });
       }
 }
@@ -201,7 +202,7 @@ export const uploadUserAvatarByAdmin = async (req, res) => {
             imageUrl: result.secure_url
         });
     } catch (error) {
-        console.error("Admin avatar upload error:", error);
+        logger.error("Admin avatar upload error:", error);
         return res.status(500).json({ success: false, message: "Image upload failed" });
     }
 }
@@ -226,7 +227,7 @@ export const deleteUserAvatarByAdmin = async (req, res) => {
 
         return res.status(200).json({ success: true, message: "Profile image deleted successfully" });
     } catch (error) {
-        console.error("Delete avatar error:", error);
+        logger.error("Delete avatar error:", error);
         return res.status(500).json({ success: false, message: "Failed to delete profile image" });
     }
 }

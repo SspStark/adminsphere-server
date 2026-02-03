@@ -1,5 +1,6 @@
 import path from 'path';
 import ejs from 'ejs';
+import logger from '../config/logger.js';
 
 export const renderUsersReportHTML = async (users) => {
     try {
@@ -7,7 +8,7 @@ export const renderUsersReportHTML = async (users) => {
         const html = await ejs.renderFile(templatePath, { users });
         return html;
     } catch (error) {
-        console.error("EJS render error:", error);
+        logger.error("EJS render error:", error);
         throw new Error("Failed to render users report");
     }
 }

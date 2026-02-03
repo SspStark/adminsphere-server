@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken'
-import cookie from 'cookie'
+import jwt from 'jsonwebtoken';
+import cookie from 'cookie';
+import logger from '../config/logger.js';
 
 let io;
 
@@ -31,20 +32,20 @@ export const initSocket = (server) => {
             };
 
             next(); // allow connection
-        } catch (err) {
+        } catch (error) {
             next(new Error("Unauthorized"));
         }
     });
 
     io.on("connection", (socket) => {
         const userId = socket.user.id;
-        console.log("Socket connected:", socket.id, "userId:", userId);
+        logger.info("Socket connected:", socket.id, "userId:", userId);
 
         // auto join user room
         socket.join(`user:${userId}`);
 
         socket.on("disconnected", () => {
-            console.log("Socket disconnected:", socket.id);
+            logger.info("Socket disconnected:", socket.id);
         });
     });
 };

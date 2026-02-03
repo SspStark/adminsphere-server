@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import logger from "../config/logger.js";
 import { renderUsersReportHTML } from "../services/pdfTemplateService.js";
 import { generatePDFBuffer } from "../services/pdfService.js";
 
@@ -19,7 +20,7 @@ export const downloadUsersPDF = async (req, res) => {
         // Stream buffer to client
         res.send(pdfBuffer);
     } catch (error) {
-        console.error("Users PDF error:", error);
+        logger.error("Users PDF error:", error);
         res.status(500).json({ success: false, message: "Failed to generate users PDF" });
     }
 }

@@ -1,9 +1,10 @@
 import cron from 'node-cron';
+import logger from '../config/logger.js';
 import { sessionCleanupJob } from './jobs/sessionCleanup.job.js';
 import { runDailyUsersReportJob } from './jobs/dailyUsersReport.job.js';
 
 export const registerCronSchedules = () => {
-    console.log("⏱️ Registering cron schedules...");
+    logger.log("⏱️ Registering cron schedules...");
 
     // Daily at 3 AM
     cron.schedule("0 3 * * *", async () => {

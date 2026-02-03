@@ -1,4 +1,5 @@
 import { getRedisClient } from "../config/redisClient.js";
+import logger from "../config/logger.js";
 
 export const rateLimiter = ({ keyPrefix, limit, windowSeconds }) => {
     return async (req, res, next) => {
@@ -22,11 +23,11 @@ export const rateLimiter = ({ keyPrefix, limit, windowSeconds }) => {
 
                 next();
             } else {
-                console.warn("Redis skipped: rate limiter disabled");
+                logger.warn("Redis skipped: rate limiter disabled");
                 next();
             }
         } catch (error) {
-            console.error("Rate limiter error:", error);
+            logger.error("Rate limiter error:", error);
             // Fail-open (do NOT block auth if Redis fails)
             next();
         }

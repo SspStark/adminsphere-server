@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { getRedisClient } from "../config/redisClient.js";
+import logger from "../config/logger.js";
 
 export const authMiddleware = async (req, res, next) => {
     try {
@@ -19,7 +20,7 @@ export const authMiddleware = async (req, res, next) => {
                 return res.status(401).json({ success: false, message: "Session expired or logged in from another device" });
             }
         } else {
-            console.warn("Redis skipped: session enforcement disabled");
+            logger.warn("Redis skipped: session enforcement disabled");
         }
 
         const user = await User.findById(id).select("-password");
@@ -30,7 +31,7 @@ export const authMiddleware = async (req, res, next) => {
 
         next();
     } catch (error) {
-        console.error("Auth middleware error", error)
+        logger.error("Auth middleware error", error)
         return res.status(401).json({ success: false, message: "Invalid or expired token" });
     }
 }

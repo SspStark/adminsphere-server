@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import logger from "../config/logger.js";
 import { generateUserExcelBuffer } from "../services/excelService.js";
 
 export const downloadUsersExcel = async (req, res) => {
@@ -18,7 +19,7 @@ export const downloadUsersExcel = async (req, res) => {
 
         res.send(excelBuffer);
     } catch (error) {
-        console.error("Users Excel error:", error);
+        logger.error("Users Excel error:", error);
         res.status(500).json({ success: false, message: "Failed to generate users Excel" });
     }
 }

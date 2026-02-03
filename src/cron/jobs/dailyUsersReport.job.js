@@ -1,4 +1,5 @@
 import User from "../../models/User.js";
+import logger from "../../config/logger.js";
 import { renderUsersReportHTML } from "../../services/pdfTemplateService.js";
 import { generatePDFBuffer } from "../../services/pdfService.js";
 import { sendEmailWithAttachment } from "../../services/mailService.js";
@@ -28,8 +29,8 @@ export const runDailyUsersReportJob = async () => {
             ]
         });
         
-        console.log("Daily users report cron job completed");
+        logger.info("Daily users report cron job completed");
     } catch (error) {
-        console.error("Daily users report cron job failed:", error);
+        logger.error("Daily users report cron job failed:", error);
     }
 }

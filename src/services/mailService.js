@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import logger from "../config/logger.js";
 
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -36,7 +37,7 @@ export const sendWelcomeEmail = async ({ firstName, lastName, email, username, p
         await transporter.sendMail(mailOptions);
         return true;
     } catch (error) {
-        console.error("Failed to send welcome email:", error);
+        logger.error("Failed to send welcome email:", error);
         return false;
     }
 
@@ -60,8 +61,8 @@ export const sendPasswordResetEmail = async (email, token) => {
         };
 
         await transporter.sendMail(mailOptions);
-    } catch (err) {
-        console.error("Failed to send password reset email:", err);
+    } catch (error) {
+        logger.error("Failed to send password reset email:", error);
     }
 };
 
@@ -75,6 +76,6 @@ export const sendEmailWithAttachment = async ({ to, subject, html, attachments }
             attachments
         });
     } catch (error) {
-        console.error("Failed to send users report:", error);
+        logger.error("Failed to send users report:", error);
     }
 }

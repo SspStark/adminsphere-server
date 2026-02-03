@@ -1,5 +1,6 @@
 import cloudinary from "../config/cloudinary.js";
 import streamifier from "streamifier";
+import logger from "../config/logger.js";
 
 export const uploadImageFromBuffer = (buffer, folder) => {
     return new Promise((resolve, reject) => {
@@ -20,6 +21,6 @@ export const deleteImageFromCloudinary = async (publicId) => {
     try {
         await cloudinary.uploader.destroy(publicId);
     } catch (error) {
-        console.error("Failed to delete image from Cloudinary:", error);
+        logger.error("Failed to delete image from Cloudinary:", error);
     }
 }

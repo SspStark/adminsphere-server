@@ -1,3 +1,4 @@
+import logger from "../../config/logger.js";
 import { getRedisClient } from "../../config/redisClient.js"
 
 export const sessionCleanupJob = async () => {
@@ -12,11 +13,11 @@ export const sessionCleanupJob = async () => {
                     await redis.del(key);
                 }
             }
-            console.log(`Session cleanup cron job completed`);
+            logger.info(`Session cleanup cron job completed`);
         } else {
-            console.warn("Redis skipped: Session cleanup cron job disabled");
+            logger.warn("Redis skipped: Session cleanup cron job disabled");
         }
     } catch (error) {
-        console.error("Session cleanup cron job failed", error);
+        logger.error("Session cleanup cron job failed", error);
     }
 }

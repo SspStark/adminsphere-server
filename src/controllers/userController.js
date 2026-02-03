@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
+import logger from "../config/logger.js";
 
 export const updateMe = async (req, res) => {
     try {
@@ -26,7 +27,7 @@ export const updateMe = async (req, res) => {
         return res.status(200).json({ success: true, message: "Profile updated successfully" });
 
     } catch (error) {
-        console.error("Update profile error:", error);
+        logger.error("Update profile error:", error);
         res.status(500).json({ success: false, message: "Server error" });
     }
 }
@@ -55,7 +56,7 @@ export const changeMyPassword = async (req, res) => {
         return res.status(200).json({ success: true, message: "Password updated successfully" });
 
     } catch (error) {
-        console.error("Password change error:", error);
+        logger.error("Password change error:", error);
         return res.status(500).json({ success: false, message: "Server error" });
     }
 };

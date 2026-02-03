@@ -1,4 +1,5 @@
 import { createClient } from "redis";
+import logger from "./logger.js";
 
 let redisClient = null;
 let redisReady = false;
@@ -14,23 +15,23 @@ export const initRedis = async () => {
 
         redisClient.on("ready", () => {
             redisReady = true;
-            console.log("Redis Ready");
+            logger.info("Redis Ready");
         });
 
         redisClient.on("end", () => {
             redisReady = false;
-            console.warn("Redis disconnected")
+            logger.warn("Redis disconnected")
         })
 
-        redisClient.on("error", (err) => {
+        redisClient.on("error", (error) => {
             redisReady = false;
-            console.error("Redis Client Error:", err);
+            logger.error("Redis Client Error:", error);
         });
 
         await redisClient.connect();
-        console.log("Redis Connected (Upstash)");
+        logger.info("Redis Connected (Upstash)");
     } catch (error) {
-        console.error("Redis connection failed (non-fatal):", error);
+        logger.error("Redis connection failed (non-fatal):", error);
     }
 };
 

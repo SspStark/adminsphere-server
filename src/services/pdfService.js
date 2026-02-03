@@ -1,4 +1,5 @@
 import puppeteer from "puppeteer";
+import logger from "../config/logger.js";
 
 export const generatePDFBuffer = async (html) => {
     let browser;
@@ -30,7 +31,7 @@ export const generatePDFBuffer = async (html) => {
 
         return pdfBuffer;
     } catch (error) {
-        console.error("PDF generation error:", error);
+        logger.error("PDF generation error:", error);
         throw new Error("Failed to generate PDF");
     } finally {
         // avoid memory leaks

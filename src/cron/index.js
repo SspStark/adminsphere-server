@@ -1,7 +1,8 @@
+import logger from "../config/logger.js";
 import { registerCronSchedules } from "./schedules.js";
 
 export const startCronSystem = () => {
-    console.log("⏱️ Starting cron system...");
+    logger.log("⏱️ Starting cron system...");
     registerCronSchedules();
-    console.log("✅ Cron system started");
+    logger.log("✅ Cron system started");
 } 

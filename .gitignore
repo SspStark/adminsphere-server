@@ -34,3 +34,4 @@ build/
 
 # routes
 src/routes/setupRoutes.js
+src/controllers/setupController.js

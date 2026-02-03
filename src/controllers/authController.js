@@ -3,8 +3,8 @@ import crypto from "crypto"
 import jwt from 'jsonwebtoken';
 import axios from "axios";
 import { OAuth2Client } from "google-auth-library";
-
 import User from "../models/User.js";
+import logger from "../config/logger.js";
 import { getRedisClient } from "../config/redisClient.js";
 import { sendPasswordResetEmail } from "../services/mailService.js";
 import appEvents from "../services/eventEmitter.js";
@@ -64,7 +64,7 @@ export const loginUser = async (req, res) => {
             sessionId = crypto.randomUUID();
             await redisClient.set(`session:${userId}`, sessionId, { EX: 60 * 60 * 24 });
         } else {
-            console.warn("Redis skipped: session enforcement disabled");
+            logger.warn("Redis skipped: session enforcement disabled");
         }
 
         await logAuthEvent({ userId: user._id, action: "LOGIN_SUCCESS", provider: "local", req });
@@ -84,7 +84,7 @@ export const loginUser = async (req, res) => {
             user: { id: userId, firstName: user.firstName, lastName: user.lastName, username: user.username, email: user.email, role: user.role } 
         });
     } catch (error) {
-        console.error("Login error", error);
+        logger.error("Login error", error);
         return res.status(500).json({ success: false, message: "Server error" });
     }
 };
@@ -107,7 +107,7 @@ export const logoutUser = async (req, res) => {
             if (redisClient){
                 await redisClient.del(`session:${userId}`);
             } else {
-                console.warn("Redis skipped: session enforcement disabled");
+                logger.warn("Redis skipped: session enforcement disabled");
             }
         }
 
@@ -117,7 +117,7 @@ export const logoutUser = async (req, res) => {
 
         return res.status(200).json({ success: true, message: "Logged out successfully" });
     } catch (error) {
-        console.error("Logout error:", error);
+        logger.error("Logout error:", error);
         res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
         return res.status(200).json({ success: true, message: "Logged out" });
     }
@@ -128,7 +128,7 @@ export const getMe = async (req,res) => {
         const user = req.user;
         return res.status(200).json({ success: true, user });
     } catch (error){
-        console.error("get current user:", error);
+        logger.error("get current user:", error);
         res.status(500).json({ message: "Server error" });
     }
 };
@@ -148,7 +148,7 @@ export const forgotPassword = async (req, res) => {
 
         const redisClient = getRedisClient();
         if (!redisClient) {
-            console.error("Redis unavailable during forgot password");
+            logger.error("Redis unavailable during forgot password");
             return res.status(503).json({ success: false, message: "Password reset temporarily unavailable. Please try later." });
         }
 
@@ -160,7 +160,7 @@ export const forgotPassword = async (req, res) => {
 
         return res.status(200).json({ success: true, message: "Password reset link sent to email." });
     } catch (error) {
-        console.error("Forgot password error:", error);
+        logger.error("Forgot password error:", error);
         return res.status(500).json({ success: false, message: "Password reset temporarily unavailable." });
     }
 }
@@ -174,7 +174,7 @@ export const resetPassword = async (req, res) => {
 
         const redisClient = getRedisClient();
         if (!redisClient) {
-            console.error("Redis unavailable during reset password");
+            logger.error("Redis unavailable during reset password");
             return res.status(503).json({ success: false, message: "Password reset temporarily unavailable. Please try later." });
         }
 
@@ -204,7 +204,7 @@ export const resetPassword = async (req, res) => {
         return res.json({ success: true, message: "Password reset successful. Please log in again." });
 
     } catch (error) {
-        console.error("Reset password error:", error);
+        logger.error("Reset password error:", error);
         return res.status(400).json({ success: false, message: "Invalid or expired reset token" });
     }
 };
@@ -296,7 +296,7 @@ export const googleOAuthLogin = async (req, res) => {
             sessionId = crypto.randomUUID();      
             await redisClient.set(`session:${userId}`, sessionId, { EX: 86400 });
         } else {
-            console.warn("Redis skipped: session enforcement disabled");
+            logger.warn("Redis skipped: session enforcement disabled");
         }
 
         await logAuthEvent({ userId: user._id, action: "GOOGLE_LOGIN", provider: "google", req });
@@ -312,7 +312,7 @@ export const googleOAuthLogin = async (req, res) => {
 
         res.redirect(`${process.env.CLIENT_URL}/home`);
     } catch (error) {
-        console.error("Google OAuth error", error);
+        logger.error("Google OAuth error", error);
         res.redirect(`${process.env.CLIENT_URL}/login?error=oauth`);
     }
 }
