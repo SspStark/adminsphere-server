@@ -9,20 +9,26 @@ const logFormat = printf(({ level, message, timestamp }) => {
 });
 
 // Fil transport (rotating)
-const fileTransport = new DailyRotateFile({
-    filename: "logs/combined-%DATE%.log",
-    datePattern: "YYYY-MM-DD",
-    maxSize: "20m",
-    maxFiles: "10d" 
-});
-
-const errorFileTransport = new DailyRotateFile({
-    filename: "logs/error-%DATE%.log",
-    datePattern: "YYYY-MM-DD",
-    level: "error",
-    maxSize: "20m",
-    maxFiles: "30d"
-});
+const transports = [];
+if (process.env.NODE_ENV === "production") {
+    transports.push(
+        new DailyRotateFile({
+            filename: "logs/combined-%DATE%.log",
+            datePattern: "YYYY-MM-DD",
+            maxSize: "20m",
+            maxFiles: "10d",
+            handleExceptions: true 
+        }),
+        new DailyRotateFile({
+            filename: "logs/error-%DATE%.log",
+            datePattern: "YYYY-MM-DD",
+            level: "error",
+            maxSize: "20m",
+            maxFiles: "30d",
+            handleExceptions: true
+        })
+    );
+}
 
 const logger = winston.createLogger({
     level: "info",
@@ -30,7 +36,7 @@ const logger = winston.createLogger({
         timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
         logFormat
     ),
-    transports: [fileTransport, errorFileTransport]
+    transports
 });
 
 // Console logs for dev

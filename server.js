@@ -14,7 +14,47 @@ import { startCronSystem } from "./src/cron/index.js";
 import { errorHandler } from "./src/middlewares/errorHandler.js";
 import logger from "./src/config/logger.js";
 
+
+// GLOBAL PROCESS ERROR HANDLERS
+process.on("unhandledRejection", (reason) => {
+    logger.error("Unhandled Rejection", reason);
+});
+
+process.on("uncaughtException", (error) => {
+    logger.error("Uncaught Exception", error);
+    process.exit(1);
+});
+
 const app = express();
+let server;
+
+// SIGNAL HANDLERS (GLOBAL) graceful shutdown (nodemon / ctrl+c)
+const shutdown = async () => {
+    logger.info("Shutting down server...");
+
+    try {
+        if (server) {
+            await new Promise((resolve) => {
+                server.close(() => {
+                    logger.info("HTTP server closed");
+                    resolve();
+                });
+            });
+        }
+        const redisClient = getRedisClient();
+        if (redisClient) {
+            await redisClient.quit();
+            logger.info("Redis connection closed");
+        }
+    } catch (error) {
+        logger.error("Error during shutdown:", error);
+    }
+
+    process.exit(0);
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 // trust proxy (prod)
 if (process.env.NODE_ENV === "production") {
@@ -44,7 +84,6 @@ const PORT = process.env.PORT;
 const initializeDBAndServer = async () => {
     try {
         await connectDB();
-
         await initRedis();
 
         const server = http.createServer(app);
@@ -53,24 +92,6 @@ const initializeDBAndServer = async () => {
         server.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
 
         startCronSystem();
-
-        // graceful shutdown (nodemon / ctrl+c)
-        const shutdown = async () => {
-          logger.info("Shutting down server...");
-          try {
-            const redisClient = getRedisClient();
-            if (redisClient) {
-              await redisClient.quit();
-              logger.info("Redis connection closed");
-            }
-          } catch (error) {
-            logger.error("Error closing Redis:", error.message);
-          }
-          process.exit(0);
-        };
-
-        process.on("SIGINT", shutdown);
-        process.on("SIGTERM", shutdown);
     } catch (error) {
         logger.error("Server startup error:", error);
         process.exit(1);
