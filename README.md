@@ -79,3 +79,15 @@ This approach prevents:
 - Implemented jobs:
   - Session cleanup
   - Daily users PDF report via email
+
+## Logging
+- Winston is used for application and error logs.
+- Logs are written to rotating files using winston-daily-rotate-file.
+- Separate error logs are maintained.
+- Morgan is used for HTTP request logging.
+
+## Known Limitations & Future Improvements
+- Frontend is currently minimal and used mainly for testing.
+- Cron jobs run per server instance (no leader election).
+- Streaming-based exports can be added for very large datasets.
+- Admin-configurable report recipients can be moved to DB.
