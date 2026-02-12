@@ -1,10 +1,10 @@
 import EventEmitter from 'events';
-import { emitForceLogout } from './socketService.js';
+import { socketEmitter } from '../integrations/socket/socketEmitter.js';
 
 const appEvents = new EventEmitter();
 
 appEvents.on("SESSION_REPLACE", ({ userId }) => {
-    emitForceLogout(userId);
+    socketEmitter.forceLogout(userId);
 })
 
 export default appEvents;

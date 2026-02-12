@@ -1,8 +1,8 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import logger from "../config/logger.js";
-import { sendWelcomeEmail } from "../services/mailService.js";
-import { uploadImageFromBuffer, deleteImageFromCloudinary } from "../services/imageService.js";
+import { sendWelcomeEmail } from "../integrations/mailService.js";
+import { uploadImageFromBuffer, deleteImageFromCloudinary } from "../integrations/imageService.js";
 
 export const createUser = async (req, res) => {
     try {

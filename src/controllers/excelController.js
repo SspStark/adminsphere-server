@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import logger from "../config/logger.js";
-import { generateUserExcelBuffer } from "../services/excelService.js";
+import { generateUserExcelBuffer } from "../integrations/excelService.js";
 
 export const downloadUsersExcel = async (req, res) => {
     try {

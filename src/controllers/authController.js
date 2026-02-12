@@ -6,8 +6,8 @@ import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import logger from "../config/logger.js";
 import { getRedisClient } from "../config/redisClient.js";
-import { sendPasswordResetEmail } from "../services/mailService.js";
-import appEvents from "../services/eventEmitter.js";
+import { sendPasswordResetEmail } from "../integrations/mailService.js";
+import appEvents from "../events/appEvents.js";
 import { logAuthEvent } from "../services/authLogService.js";
 import { isAccountLocked, recordFailedLogin, resetLoginAttempts } from "../utils/accountLock.js";
 

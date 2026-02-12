@@ -1,6 +1,6 @@
 import path from 'path';
 import ejs from 'ejs';
-import logger from '../config/logger.js';
+import logger from '../../config/logger.js';
 
 export const renderUsersReportHTML = async (users) => {
     try {

@@ -1,19 +1,19 @@
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
-import logger from '../config/logger.js';
+import logger from '../../config/logger.js';
 
-let io;
+let IO;
 
-export const initSocket = (server) => {
-    io = new Server(server, {
+export function initSocket(server) {
+    IO = new Server(server, {
         cors: {
             origin: process.env.CLIENT_URL,
             credentials: true
         }
     });
 
-    io.use((socket, next) => {
+    IO.use((socket, next) => {
         try {
             const rawCookie = socket.handshake.headers.cookie;
             if (!rawCookie) return next(new Error("No cookies"));
@@ -37,21 +37,20 @@ export const initSocket = (server) => {
         }
     });
 
-    io.on("connection", (socket) => {
+    IO.on("connection", (socket) => {
         const userId = socket.user.id;
         logger.info("Socket connected:", socket.id, "userId:", userId);
 
         // auto join user room
         socket.join(`user:${userId}`);
 
-        socket.on("disconnected", () => {
+        socket.on("disconnect", () => {
             logger.info("Socket disconnected:", socket.id);
         });
     });
 };
 
-export const emitForceLogout = (userId) => {
-    io.to(`user:${userId}`).emit("FORCE_LOGOUT", {
-        message: "Logged out due to another login"
-    });
-};
+export function getIO() {
+    if (!IO) throw new Error("Socket.io not initialized");
+    return IO;
+}

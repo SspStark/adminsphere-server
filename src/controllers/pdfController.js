@@ -1,7 +1,7 @@
 import User from "../models/User.js";
 import logger from "../config/logger.js";
-import { renderUsersReportHTML } from "../services/pdfTemplateService.js";
-import { generatePDFBuffer } from "../services/pdfService.js";
+import { renderUsersReportHTML } from "../integrations/pdf/pdfTemplateService.js";
+import { generatePDFBuffer } from "../integrations/pdf/pdfService.js";
 
 export const downloadUsersPDF = async (req, res) => {
     try {

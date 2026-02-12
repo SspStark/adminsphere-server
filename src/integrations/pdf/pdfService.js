@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer";
-import logger from "../config/logger.js";
+import logger from "../../config/logger.js";
 
 export const generatePDFBuffer = async (html) => {
     let browser;

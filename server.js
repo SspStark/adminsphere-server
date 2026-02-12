@@ -4,7 +4,7 @@ import http from 'http'
 import app from "./app.js";
 import connectDB from './src/config/db.js'
 import { initRedis, getRedisClient  } from './src/config/redisClient.js';
-import { initSocket } from './src/services/socketService.js';
+import { initSocket } from './src/integrations/socket/socketServer.js';
 import { startCronSystem } from "./src/cron/index.js";
 import logger from "./src/config/logger.js";
 
