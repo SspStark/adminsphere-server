@@ -22,7 +22,9 @@ The focus of this project is **backend architecture and correctness**. not UI po
 The project follows a layered architecture:
 - Routes: API endpoints and access control
 - Controllers: Request Orchestration
-- Services: Business logic and external integrations (Email, Redis, PDF, Excel, Socket, Events) 
+- Services: Business logic 
+- Integrations: external integrations (Email, PDF, Excel, Socket) 
+- Events: App Events
 - Middlewares: Authentication, validation, ratelimiting
 - Cron Jobs: Background scheduled tasks
 - Utilities: Reusable helper functions
