@@ -9,83 +9,24 @@ import { getRedisClient } from "../config/redisClient.js";
 import { sendPasswordResetEmail } from "../integrations/mailService.js";
 import appEvents from "../events/appEvents.js";
 import { logAuthEvent } from "../services/authLogService.js";
-import { isAccountLocked, recordFailedLogin, resetLoginAttempts } from "../utils/accountLock.js";
 
 export const loginUser = async (req, res) => {
     try {
-        const identifier = req.body.identifier.trim();
-        const password = req.body.password;
+        const { token, user } = await authService.login(req.body, req);
 
-        const isEmail = identifier.includes("@");
-
-        const user = await User.findOne(
-            isEmail ? { email: identifier.toLowerCase() } : { username: new RegExp("^" + identifier + "$", "i") });
-        if (!user) {
-            await logAuthEvent({ action:"LOGIN_FAILED", provider:"local", req });
-            return res.status(400).json({ success: false, message: "Invalid username/email" });
-        }
-        
-        // BLOCK password login for Google users
-        if (!user.authProvider.includes("local")) {
-            await logAuthEvent({ action:"LOGIN_FAILED", provider:"local", req });
-            return res.status(403).json({ success: false, message: "Please login with your existing Google account and create a password" });
-        }
-
-        if (isAccountLocked(user)) {
-            return res.status(423).json({ success: false, message: "Account temporarily locked. Try again later." });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            await recordFailedLogin(user);
-            await logAuthEvent({ userId: user._id, action: "LOGIN_FAILED", provider: "local", req });
-
-            // If just locked
-            if (isAccountLocked(user)) {
-                return res.status(423).json({ success: false, message: "Too many failed attempts. Account locked for 15 minutes." });
-            }
-
-            return res.status(400).json({ success: false, message: "Invalid password" });
-        }
-        
-        // Password correct → reset attempts
-        await resetLoginAttempts(user);
-        
-        const userId = user._id.toString();
-        const redisClient = getRedisClient();
-
-        let sessionId = null;
-        if (redisClient){
-            const oldSession = await redisClient.get(`session:${userId}`);
-            if (oldSession){
-                appEvents.emit("SESSION_REPLACE", { userId });
-            }
-
-            sessionId = crypto.randomUUID();
-            await redisClient.set(`session:${userId}`, sessionId, { EX: 60 * 60 * 24 });
-        } else {
-            logger.warn("Redis skipped: session enforcement disabled");
-        }
-
-        await logAuthEvent({ userId: user._id, action: "LOGIN_SUCCESS", provider: "local", req });
-
-        const payload = {
-            id: userId,
-            role: user.role,
-            ...(sessionId && { sessionId })
-        };
-        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
-
-        res.cookie("token", token, { httpOnly: true, secure: false, sameSite: 'lax', maxAge: 24 * 60 * 60 * 1000 });
-
-        return res.status(200).json({
-            success: true, 
-            message: "Login successful", 
-            user: { id: userId, firstName: user.firstName, lastName: user.lastName, username: user.username, email: user.email, role: user.role } 
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: false,
+            sameSite: "lax",
+            maxAge: 24 * 60 * 60 * 1000
         });
+
+        return res.status(200).json({ success: true, message: "Login successful", user });
+
     } catch (error) {
-        logger.error("Login error", error);
-        return res.status(500).json({ success: false, message: "Server error" });
+        logger.error("Login error:", error);
+
+        return res.status(error.statusCode || 500).json({ success: false, message: error.message || "Server error" });
     }
 };
 
