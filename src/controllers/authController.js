@@ -9,25 +9,19 @@ import { getRedisClient } from "../config/redisClient.js";
 import { sendPasswordResetEmail } from "../integrations/mailService.js";
 import appEvents from "../events/appEvents.js";
 import { logAuthEvent } from "../services/authLogService.js";
+import * as authService from "../services/authService.js";
 
 export const loginUser = async (req, res) => {
-    try {
-        const { token, user } = await authService.login(req.body, req);
+    const { token, user } = await authService.login(req.body, req);
 
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "lax",
-            maxAge: 24 * 60 * 60 * 1000
-        });
+    res.cookie("token", token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 24 * 60 * 60 * 1000
+    });
 
-        return res.status(200).json({ success: true, message: "Login successful", user });
-
-    } catch (error) {
-        logger.error("Login error:", error);
-
-        return res.status(error.statusCode || 500).json({ success: false, message: error.message || "Server error" });
-    }
+    return res.status(200).json({ success: true, message: "Login successful", user });
 };
 
 export const logoutUser = async (req, res) => {

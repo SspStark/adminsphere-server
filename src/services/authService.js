@@ -11,13 +11,7 @@ import { sendPasswordResetEmail } from "../integrations/mailService.js";
 import appEvents from "../events/appEvents.js";
 import { logAuthEvent } from "./authLogService.js";
 import constants from "../constants.js";
-
-class AuthError extends Error {
-    constructor(message, statusCode){
-        super(message);
-        this.statusCode = statusCode;
-    }
-}
+import { AuthError } from "../errors/appError.js";
 
 const isAccountLocked = (user) => {
     if (!user.lockUntil) return false;
