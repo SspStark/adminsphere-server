@@ -39,13 +39,13 @@ export function initSocket(server) {
 
     IO.on("connection", (socket) => {
         const userId = socket.user.id;
-        logger.info("Socket connected:", socket.id, "userId:", userId);
+        logger.info("Socket connected");
 
         // auto join user room
         socket.join(`user:${userId}`);
 
         socket.on("disconnect", () => {
-            logger.info("Socket disconnected:", socket.id);
+            logger.info("Socket disconnected");
         });
     });
 };
