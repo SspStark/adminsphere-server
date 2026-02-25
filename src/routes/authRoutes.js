@@ -1,12 +1,12 @@
 import express from 'express';
-import { loginUser, logoutUser, getMe, forgotPassword, resetPassword, googleAuth, googleOAuthLogin } from '../controllers/authController.js';
+import { login, logout, getMe, forgotPassword, resetPassword, googleAuth, googleOAuthLogin } from '../controllers/authController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { rateLimiter } from '../middlewares/rateLimiter.js';
 
 const router = express.Router();
 
-router.post("/login", rateLimiter({ keyPrefix: "login", limit: 5, windowSeconds: 15 * 60 }), loginUser);
-router.post("/logout", logoutUser);
+router.post("/login", rateLimiter({ keyPrefix: "login", limit: 5, windowSeconds: 15 * 60 }), login);
+router.post("/logout", logout);
 router.get("/me", authMiddleware, getMe);
 router.post("/forgot-password", rateLimiter({ keyPrefix: "login", limit: 3, windowSeconds: 15 * 60 }), forgotPassword);
 router.post("/reset-password", resetPassword);

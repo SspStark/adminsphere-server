@@ -1,152 +1,36 @@
-import bcrypt from "bcryptjs";
-import crypto from "crypto"
-import jwt from 'jsonwebtoken';
-import axios from "axios";
-import { OAuth2Client } from "google-auth-library";
-import User from "../models/User.js";
 import logger from "../config/logger.js";
-import { getRedisClient } from "../config/redisClient.js";
-import { sendPasswordResetEmail } from "../integrations/mailService.js";
-import appEvents from "../events/appEvents.js";
-import { logAuthEvent } from "../services/authLogService.js";
 import * as authService from "../services/authService.js";
 
-export const loginUser = async (req, res) => {
+export const login = async (req, res) => {
     const { token, user } = await authService.login(req.body, req);
 
-    res.cookie("token", token, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        maxAge: 24 * 60 * 60 * 1000
-    });
+    res.cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 24 * 60 * 60 * 1000 });
 
     return res.status(200).json({ success: true, message: "Login successful", user });
 };
 
-export const logoutUser = async (req, res) => {
-    try {
-        const token = req.cookies.token;
-        if (!token){
-            res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
-            return res.status(200).json({ success: true, message: "User already logged out" });
-        } 
-        const isForceLogout = req.body?.forceLogout;
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.id;
+export const logout = async (req, res) => {
+    await authService.logout(req);
         
-        if (!isForceLogout){
-            const redisClient = getRedisClient();
+    res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
 
-            if (redisClient){
-                await redisClient.del(`session:${userId}`);
-            } else {
-                logger.warn("Redis skipped: session enforcement disabled");
-            }
-        }
-
-        await logAuthEvent({ userId, action: "LOGOUT", provider: "local", req });
-
-        res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
-
-        return res.status(200).json({ success: true, message: "Logged out successfully" });
-    } catch (error) {
-        logger.error("Logout error:", error);
-        res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
-        return res.status(200).json({ success: true, message: "Logged out" });
-    }
+    return res.status(200).json({ success: true, message: "Logged out successfully" });
 };
 
 export const getMe = async (req,res) => {
-    try {
-        const user = req.user;
-        return res.status(200).json({ success: true, user });
-    } catch (error){
-        logger.error("get current user:", error);
-        res.status(500).json({ message: "Server error" });
-    }
+    const user = req.user;
+    return res.status(200).json({ success: true, user });
 };
 
 export const forgotPassword = async (req, res) => {
-    try {
-        const { email } = req.body;
-
-        const user = await User.findOne({ email: email.toLowerCase() });
-        if (!user) {
-            return res.status(200).json({ success: false, message: "If this email exists, a reset link has been sent." });
-        }
-
-        if (!user.authProvider.includes("local")) {
-            return res.status(400).json({ success: false, message: "Password reset not available for Google login users" });
-        }
-
-        const redisClient = getRedisClient();
-        if (!redisClient) {
-            logger.error("Redis unavailable during forgot password");
-            return res.status(503).json({ success: false, message: "Password reset temporarily unavailable. Please try later." });
-        }
-
-        const resetToken = jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: "10m" });
-
-        await redisClient.set(`password_reset:${user._id}`, "1", { EX: 600 });
-
-        await sendPasswordResetEmail(user.email, resetToken);
-
-        return res.status(200).json({ success: true, message: "Password reset link sent to email." });
-    } catch (error) {
-        logger.error("Forgot password error:", error);
-        return res.status(500).json({ success: false, message: "Password reset temporarily unavailable." });
-    }
+    const result = await authService.forgotPassword(req.body.email, req);
+    return res.status(200).json(result);
 }
 
 export const resetPassword = async (req, res) => {
-    try {
-        const { token, newPassword } = req.body;
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.id;
-
-        const redisClient = getRedisClient();
-        if (!redisClient) {
-            logger.error("Redis unavailable during reset password");
-            return res.status(503).json({ success: false, message: "Password reset temporarily unavailable. Please try later." });
-        }
-
-        const resetAllowed = await redisClient.get(`password_reset:${userId}`);
-
-        if (!resetAllowed) {
-            return res.status(400).json({ success: false, message: "Invalid or expired reset token" });
-        }
-
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ success: false, message: "User not found" });
-        }
-
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
-        await user.save();
-
-        // Delete reset token
-        await redisClient.del(`password_reset:${userId}`);
-
-        // Force logout — delete session
-        await redisClient.del(`session:${userId}`);
-
-        await logAuthEvent({ userId: user._id, action: "PASSWORD_RESET", provider: "local", req });
-
-        return res.json({ success: true, message: "Password reset successful. Please log in again." });
-
-    } catch (error) {
-        logger.error("Reset password error:", error);
-        return res.status(400).json({ success: false, message: "Invalid or expired reset token" });
-    }
+    const result = await authService.resetPassword(req.body, req);
+    return res.status(200).json(result);
 };
-
-const googleClient = new OAuth2Client(
-    process.env.GOOGLE_CLIENT_ID
-);
 
 export const googleAuth = (req, res) => {
     const redirectUrl =
@@ -161,87 +45,7 @@ export const googleAuth = (req, res) => {
 
 export const googleOAuthLogin = async (req, res) => {
     try {
-        const { code } = req.query;
-
-        // Exchange code for tokens
-        const tokenRes = await axios.post("https://oauth2.googleapis.com/token", 
-            {
-                client_id: process.env.GOOGLE_CLIENT_ID,
-                client_secret: process.env.GOOGLE_CLIENT_SECRET,
-                code,
-                redirect_uri: process.env.GOOGLE_REDIRECT_URI,
-                grant_type: "authorization_code"
-            }
-        )
-
-        const { id_token } = tokenRes.data;
-
-        // Verify Google identity
-        const ticket = await googleClient.verifyIdToken({
-            idToken: id_token,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        });
-        const payload = ticket.getPayload();
-        const { sub, email, given_name, family_name, email_verified } = payload;
-
-        if (!email_verified) {
-            return res.redirect(`${process.env.CLIENT_URL}/login?error=email_not_verified`);
-        }
-
-        let user = await User.findOne({ googleId: sub });
-
-        // Check for local user exists
-        if (!user) {
-            user = await User.findOne({ email });
-
-            // Local user exists → LINK GOOGLE
-            if (user && !user.authProvider.includes("google")){
-                user.googleId = sub;
-                user.authProvider.push("google");
-
-                if (!user.profileImage?.url && payload.picture){
-                    user.profileImage.url = payload.picture;
-                }
-
-                await user.save();
-            }
-        }
-
-        // New Google user
-        if (!user) {
-            user = await User.create({
-                firstName: given_name || email.split("@")[0],
-                lastName: family_name || "",
-                email,
-                username: email.split("@")[0],
-                authProvider: ["google"],
-                googleId: sub
-            });
-        }
-
-        const userId = user._id.toString();
-        const redisClient = getRedisClient();
-        let sessionId = null;
-        if (redisClient){
-            const oldSession = await redisClient.get(`session:${userId}`);
-            if (oldSession) {
-                appEvents.emit("SESSION_REPLACE", { userId });
-            }
-                   
-            sessionId = crypto.randomUUID();      
-            await redisClient.set(`session:${userId}`, sessionId, { EX: 86400 });
-        } else {
-            logger.warn("Redis skipped: session enforcement disabled");
-        }
-
-        await logAuthEvent({ userId: user._id, action: "GOOGLE_LOGIN", provider: "google", req });
-
-        const tokenPayload = {
-            id: userId,
-            role: user.role,
-            ...(sessionId && { sessionId })
-        };
-        const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
+        const { token } = await authService.googleOAuthLogin(req);
 
         res.cookie("token", token, { httpOnly: true, sameSite: "lax", secure: false, maxAge: 86400000 });
 
