@@ -8,7 +8,7 @@ import { initSocket } from './src/integrations/socket/socketServer.js';
 import { startCronSystem } from "./src/cron/index.js";
 import logger from "./src/config/logger.js";
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3005;
 let server;
 
 // GLOBAL PROCESS ERROR HANDLERS

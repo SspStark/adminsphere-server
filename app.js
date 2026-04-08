@@ -28,6 +28,7 @@ app.use(morgan('dev'));
 registerRoutes(app);
 
 app.get('/', (req, res) => res.send("AdminSphere server running..."));
+app.get('/health', (req, res) => res.status(200).json({ message: "AdminSphere server running..." }));
 
 app.use(errorHandler);
 
