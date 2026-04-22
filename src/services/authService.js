@@ -135,7 +135,7 @@ export const logout = async (req) => {
     await logAuthEvent({ userId, action: "LOGOUT", provider: "local", req });
 }
 
-export const forgotPassword = async (email, req) => {
+export const forgotPassword = async (email) => {
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
         return  { success: true, message: "If this email exists, a reset link has been sent." };

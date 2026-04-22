@@ -2,7 +2,7 @@ import multer from 'multer';
 
 const storage = multer.memoryStorage();
 
-const upload = multer({
+const uploadAvatar = multer({
     storage,
     limits:{ fileSize: 2 * 1024 * 1024 }, // 2MB
     fileFilter: (req, file, cb) => {
@@ -13,4 +13,4 @@ const upload = multer({
     }
 });
 
-export default upload;
+export default uploadAvatar;

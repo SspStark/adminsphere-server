@@ -2,7 +2,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import logger from "../config/logger.js";
 import { sendWelcomeEmail } from "../integrations/mailService.js";
-import { uploadImageFromBuffer, deleteImageFromCloudinary } from "../integrations/imageService.js";
+import { uploadToCloudinary, deleteFromCloudinary } from "../integrations/imageService.js";
 
 export const createUser = async (req, res) => {
     try {
@@ -184,11 +184,11 @@ export const uploadUserAvatarByAdmin = async (req, res) => {
 
         // Delete old image
         if (user.profileImage?.publicId) {
-            await deleteImageFromCloudinary(user.profileImage.publicId);
+            await deleteFromCloudinary(user.profileImage.publicId, "image");
         }
 
         // Upload new image
-        const result = await uploadImageFromBuffer(req.file.buffer, "adminsphere/profile-images");
+        const result = await uploadToCloudinary(req.file.buffer, "adminsphere/profile-images", "image");
 
         user.profileImage = {
             url: result.secure_url,
@@ -219,7 +219,7 @@ export const deleteUserAvatarByAdmin = async (req, res) => {
             return res.status(400).json({ success: false, message: "No profile image to delete" });
         }
 
-        await deleteImageFromCloudinary(user.profileImage.publicId);
+        await deleteFromCloudinary(user.profileImage.publicId, "image");
 
         user.profileImage = { url: "", publicId: "" };
 

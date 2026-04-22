@@ -3,7 +3,7 @@ import { createUser, updateUserByAdmin, resetUserPasswordByAdmin, deleteUserByAd
 import { createUserValidation, validateResult } from "../middlewares/validation.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { isAdmin } from "../middlewares/isAdmin.js";
-import upload from '../middlewares/upload.js'
+import uploadAvatar from '../middlewares/uploadAvatar.js'
 import { downloadUsersPDF } from "../controllers/pdfController.js";
 import { downloadUsersExcel } from "../controllers/excelController.js";
 
@@ -15,7 +15,7 @@ router.patch("/users/:id", authMiddleware, isAdmin, updateUserByAdmin);
 router.patch("/users/:id/password", authMiddleware, isAdmin, resetUserPasswordByAdmin);
 router.delete("/users/:id", authMiddleware, isAdmin, deleteUserByAdmin);
 router.get("/users/:id", authMiddleware, isAdmin, getUserById);
-router.patch("/users/:id/avatar", authMiddleware, isAdmin, upload.single("avatar"), uploadUserAvatarByAdmin);
+router.patch("/users/:id/avatar", authMiddleware, isAdmin, uploadAvatar.single("avatar"), uploadUserAvatarByAdmin);
 router.delete("/users/:id/avatar", authMiddleware, isAdmin, deleteUserAvatarByAdmin);
 router.get("/reports/users-pdf", authMiddleware, isAdmin, downloadUsersPDF);
 router.get("/reports/users-excel", authMiddleware, isAdmin, downloadUsersExcel);

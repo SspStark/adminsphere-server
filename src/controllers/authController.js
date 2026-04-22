@@ -23,7 +23,7 @@ export const getMe = async (req,res) => {
 };
 
 export const forgotPassword = async (req, res) => {
-    const result = await authService.forgotPassword(req.body.email, req);
+    const result = await authService.forgotPassword(req.body.email);
     return res.status(200).json(result);
 }
 
