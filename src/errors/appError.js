@@ -11,3 +11,4 @@ class AppError extends Error {
 }
 
 export class AuthError extends AppError {};
+export class TaskError extends AppError {};
