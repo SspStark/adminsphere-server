@@ -7,5 +7,6 @@ import { isAdmin } from "../middlewares/isAdmin.js";
 const router = express.Router();
 
 router.post('/', authMiddleware, isAdmin, uploadTaskFiles.array("attachments", 5), taskController.createTask);
+router.get('/', authMiddleware, taskController.getTasks);
 
 export default router;
