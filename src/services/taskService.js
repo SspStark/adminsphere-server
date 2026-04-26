@@ -1,4 +1,5 @@
 import Task from "../models/Task.js";
+import User from "../models/User.js";
 import { TaskError } from "../errors/appError.js";
 import { uploadToCloudinary } from "../integrations/imageService.js"
 
@@ -81,4 +82,66 @@ export const getTasks = async (query, user) => {
     const total = await Task.countDocuments(filter);
 
     return { total, page, pages: Math.ceil(total/limit), data: tasks };
+}
+
+export const updateTask = async (taskId, data, user) => {
+    const task = await Task.findById(taskId);
+    if (!task || task.isDeleted) {
+        throw new TaskError("Task not found", 400);
+    }
+
+    // Employee restriction
+    if (user.role === "employee") {
+        if (!task.assignedTo || task.assignedTo.toString() !== user._id.toString()) {
+            throw new TaskError("Not authorised", 403);
+        }
+
+        const allowedStatus = ["pending", "in-progress", "completed"];
+
+        if (data.status && allowedStatus.includes(data.status)) {
+            task.status = data.status;
+        }
+    } else {
+        const allowedFields = ["title", "description", "status", "priority", "dueDate"]
+        allowedFields.forEach(field => {
+            if (data[field] !== undefined) {
+                task[field] = data[field];
+            }
+        });
+
+        if (data.assignedTo !== undefined) {
+            if (data.assignedTo === null) {
+                data.assignedTo = null;
+                data.assignedBy = null;
+            } else {
+                const userExists = await User.exists({ _id: data.assignedTo });
+                if (!userExists) throw new TaskError("Invalid assigned user", 400);
+                
+                const isChanged = data.assignedTo !== task.assignedTo?.toString();
+                if (isChanged) {
+                    task.assignedTo = data.assignedTo;
+                    task.assignedBy = user._id;
+                }
+            }
+        }
+    }
+
+    task.updatedBy = user._id;
+
+    await task.save();
+
+    return task;
+}
+
+export const deleteTask = async (taskId, userId) => {
+    const task = await Task.findById(taskId);
+
+    if (!task || task.isDeleted) {
+        throw new TaskError("Task not found", 404);
+    }
+
+    task.isDeleted = true;
+    task.updatedBy = userId;
+
+    await task.save();
 }
